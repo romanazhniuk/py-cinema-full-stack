@@ -1,27 +1,42 @@
-version: "3"
-
+version: "3.9"
 services:
-  app:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./backend:/app
-      - ./backend/media:/vol/web/media
-    command: >
-      sh -c "python manage.py wait_for_db &&
-             python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8080"
-    env_file:
-      - .env
-    depends_on:
-      - db
-
   db:
-    image: postgres:14-alpine
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cinema}
+      POSTGRES_USER: ${DB_USER:-cinema}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-cinema}
     ports:
       - "5432:5432"
-    env_file:
-      - .env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: .env
+    command: >
+      sh -c "python manage.py migrate &&
+             gunicorn cinema_service.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+    command: >
+      sh -c "npm install && npm run dev -- --host"
+
+volumes:
+  db_data:

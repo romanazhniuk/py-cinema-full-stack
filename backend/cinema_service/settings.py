@@ -39,10 +39,8 @@ if DEBUG:
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-
-    # CORS must be as high as possible (before CommonMiddleware)
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # ← додати цей рядок
     "corsheaders.middleware.CorsMiddleware",
-
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

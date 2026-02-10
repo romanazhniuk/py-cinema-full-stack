@@ -1,19 +1,17 @@
 import os
 from datetime import timedelta
 from pathlib import Path
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe")
 DEBUG = os.getenv("DJANGO_DEBUG", "0") == "1"
 
-
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost").split(",")
-
-INTERNAL_IPS = [
-    "127.0.0.1",
-]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost").split(",") if h.strip()]
 
 # Application definition
 
@@ -24,29 +22,50 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
     "rest_framework",
     "drf_spectacular",
-    "debug_toolbar",
+
+    "corsheaders",
+
+    # Local apps
     "cinema",
     "user",
-    "corsheaders",
 ]
+
+# Debug toolbar only for DEBUG
+if DEBUG:
+    INSTALLED_APPS += ["debug_toolbar"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
+
+    # CORS must be as high as possible (before CommonMiddleware)
+    "corsheaders.middleware.CorsMiddleware",
+
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
 ]
 
+# Debug toolbar middleware only for DEBUG
+if DEBUG:
+    MIDDLEWARE = ["debug_toolbar.middleware.DebugToolbarMiddleware"] + MIDDLEWARE
+    INTERNAL_IPS = ["127.0.0.1", "localhost"]
+
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if os.getenv("CORS_ALLOW_ORIGINS") else []
-CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
+
+# твої .env мають: CORS_ALLOW_ORIGINS=..., CSRF_TRUSTED_ORIGINS=...
+# (у тебе раніше було CORS_ALLOW_ORIGINS в .env, але код читав CORS_ALLOW_ORIGINS? / CORS_ALLOW_ORIGINS vs CORS_ALLOW_ORIGINS)
+CORS_ALLOWED_ORIGINS = [
+    o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if o.strip()
+]
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+]
 
 ROOT_URLCONF = "cinema_service.urls"
 
@@ -57,6 +76,7 @@ TEMPLATES = [
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
+                # ВАЖЛИВО: debug processor умикає template debug output; це норм, але він має працювати лише коли DEBUG=True
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
@@ -75,15 +95,13 @@ SIMPLE_JWT = {
 }
 
 # Database
-# https://docs.djangoproject.com/en/4.0/ref/settings/#databases
-
 if os.getenv("DB_HOST"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DB_NAME"),
-            "USER": os.getenv("DB_USER"),
-            "PASSWORD": os.getenv("DB_PASSWORD"),
+            "NAME": os.getenv("DB_NAME", "cinema"),
+            "USER": os.getenv("DB_USER", "cinema"),
+            "PASSWORD": os.getenv("DB_PASSWORD", "cinema"),
             "HOST": os.getenv("DB_HOST"),
             "PORT": os.getenv("DB_PORT", "5432"),
         }
@@ -96,52 +114,38 @@ else:
         }
     }
 
-# Password validation
-# https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation."
-        "UserAttributeSimilarityValidator",
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation."
-        "MinimumLengthValidator",
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation."
-        "CommonPasswordValidator",
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        "NAME": "django.contrib.auth.password_validation."
-        "NumericPasswordValidator",
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
 AUTH_USER_MODEL = "user.User"
 
-# Internationalization
-# https://docs.djangoproject.com/en/4.0/topics/i18n/
-
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+# у тебе в .env є DJANGO_TIMEZONE=Europe/Kyiv, тож підхопимо її
+TIME_ZONE = os.getenv("DJANGO_TIMEZONE", "Europe/Kyiv")
 
 USE_I18N = True
+USE_TZ = True  # рекомендовано для Django (особливо якщо є JWT, токени, строки життя)
 
-USE_TZ = False
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.0/howto/static-files/
-
-STATIC_URL = "static/"
+# Static files
+# ВАЖЛИВО: має бути зі слешем на початку, інакше /static/... ламається
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = "/vol/web/media"
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
+MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -150,10 +154,9 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",  # або Base на твій розсуд
+        "rest_framework.permissions.AllowAny",
     ),
 }
-
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Cinema Service API",

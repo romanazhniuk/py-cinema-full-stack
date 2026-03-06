@@ -37,10 +37,10 @@ export default {
 
     async signIn() {
       try {
-        // VITE_API_URL у тебе: http://localhost:8000/api
-        // правильний endpoint: POST /api/user/token/
-        const baseUrl = import.meta.env.VITE_API_URL; // .../api
-        const url = `${baseUrl}/user/token/`;
+        // VITE_API_URL: backend root (e.g. http://localhost:8000)
+        // correct endpoint: POST /api/user/token/
+        const baseUrl = import.meta.env.VITE_API_URL;
+        const url = `${baseUrl}/api/user/token/`;
 
         const { data } = await this.axios.post(url, {
           email: this.email,

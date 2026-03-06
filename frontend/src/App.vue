@@ -48,9 +48,8 @@ export default {
   }),
   methods: {
     apiBase() {
-      // В docker-compose: VITE_API_URL = http://localhost:8000/api
-      // Тобто тут base вже містить /api
-      return import.meta.env.VITE_API_URL;
+      // VITE_API_URL is backend root (e.g. http://localhost:8000)
+      return `${import.meta.env.VITE_API_URL}/api`;
     },
 
     async logIn() {

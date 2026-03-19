@@ -15,12 +15,23 @@
       ></custom-multiselect>
     </div>
     <div class="movie-container">
-      <movie-card
-        v-for="(movie, index) in movies"
-        :key="index"
-        v-bind="movie"
-        @click="handleMovieDetailsClick"
-      ></movie-card>
+      <div
+        v-for="movie in movies"
+        :key="movie.id"
+        class="movie-wrapper"
+      >
+        <movie-card
+          v-bind="movie"
+          @click="handleMovieDetailsClick"
+        />
+        <action-button
+          v-if="isStaff"
+          label="Delete"
+          type="filled"
+          width="wide"
+          @click.stop="deleteMovie(movie.id)"
+        />
+      </div>
     </div>
     <add-btn
       v-if="isStaff"
@@ -35,6 +46,7 @@ import debounce from 'lodash.debounce';
 import CustomMultiselect from '../comps/CustomMultiselect.vue';
 import MovieCard from '../comps/MovieCard.vue';
 import AddBtn from '../comps/AddBtn.vue';
+import ActionButton from '../comps/ActionButton.vue';
 
 export default {
   props: {
@@ -59,7 +71,7 @@ export default {
   methods: {
     async fetchActors () {
       try {
-        const { data: actors } = await this.axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/actors`, {
+        const { data: actors } = await this.axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/actors/`, {
           headers: { Authorization: `Bearer ${this.token}` }
         });
         this.actors = actors.map(({ id, first_name: firstName, last_name: lastName }) => {
@@ -76,7 +88,7 @@ export default {
 
     async fetchGenres () {
       try {
-        const { data: genres } = await this.axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/genres`, {
+        const { data: genres } = await this.axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/genres/`, {
           headers: { Authorization: `Bearer ${this.token}` }
         });
         this.genres = genres;
@@ -91,7 +103,7 @@ export default {
       if (this.selectedGenreIds.length) params.genres = this.selectedGenreIds.join();
 
       try {
-        const { data: movies } = await this.axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/movies`, {
+        const { data: movies } = await this.axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/movies/`, {
           headers: { Authorization: `Bearer ${this.token}` },
           params
         });
@@ -141,6 +153,23 @@ export default {
 
     handleMovieCreate () {
       location.hash = '#/movies?add=true';
+    },
+
+    async deleteMovie (id) {
+      if (!confirm('Delete this movie?')) return;
+      try {
+        await this.axios.delete(
+          `${import.meta.env.VITE_API_URL}/api/cinema/movies/${id}/`,
+          {
+            headers: { Authorization: `Bearer ${this.token}` }
+          }
+        );
+        this.movies = this.movies.filter((movie) => movie.id !== id);
+      } catch (err) {
+        const payload = err?.response?.data;
+        console.error('Delete movie failed:', payload || err);
+        alert('Failed to delete movie. Details: ' + JSON.stringify(payload || err.message));
+      }
     }
   },
   mounted () {
@@ -160,7 +189,8 @@ export default {
   components: {
     CustomMultiselect,
     MovieCard,
-    AddBtn
+    AddBtn,
+    ActionButton
   }
 };
 </script>
@@ -177,5 +207,12 @@ export default {
   column-gap: 40px;
   row-gap: 60px;
   margin-top: 60px;
+}
+
+.movie-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
 }
 </style>

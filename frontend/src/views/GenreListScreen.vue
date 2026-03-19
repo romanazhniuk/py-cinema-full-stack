@@ -9,8 +9,13 @@
     <div class="genres">
       <div class="header">All Genres</div>
       <div class="container">
-        <div v-for="(genre, index) in genres" :key="genre.id" :class="index % 2 === 0 ? 'odd' : ''">
-          {{genre.name}}
+        <div
+          v-for="(genre, index) in genres"
+          :key="genre.id"
+          :class="index % 2 === 0 ? 'odd row' : 'row'"
+        >
+          <span>{{ genre.name }}</span>
+          <button class="delete-btn" @click="deleteGenre(genre.id)">✕</button>
         </div>
       </div>
       <add-btn @click="createMode = !createMode"></add-btn>
@@ -45,7 +50,7 @@ export default {
   methods: {
     async fetchGenres () {
       try {
-        const { data: genres } = await axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/genres`, {
+        const { data: genres } = await axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/genres/`, {
           headers: { Authorization: `Bearer ${this.token}` }
         });
         this.genres = genres;
@@ -64,7 +69,7 @@ export default {
         };
 
         await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/cinema/genres`,
+          `${import.meta.env.VITE_API_URL}/api/cinema/genres/`,
           {
             name: this.name
           },
@@ -77,6 +82,22 @@ export default {
         this.name = '';
       } catch (err) {
         console.error(err);
+      }
+    },
+
+    async deleteGenre (id) {
+      if (!confirm('Delete this genre?')) return;
+      try {
+        await axios.delete(
+          `${import.meta.env.VITE_API_URL}/api/cinema/genres/${id}/`,
+          {
+            headers: { Authorization: `Bearer ${this.token}` }
+          }
+        );
+        this.genres = this.genres.filter((genre) => genre.id !== id);
+      } catch (err) {
+        console.error(err.response?.data || err);
+        alert('Failed to delete genre.');
       }
     },
 
@@ -141,16 +162,29 @@ export default {
   line-height: 30px;
 }
 
-.container > div {
+.container > .row {
   height: 50px;
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  justify-content: space-between;
+  padding: 0 10px 0 16px;
   border-radius: 10px;
 }
 
 .container > .odd {
   background-color: var(--secondary-bg);
+}
+
+.delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--main-font);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+}
+.delete-btn:hover {
+  color: var(--red);
 }
 
 </style>

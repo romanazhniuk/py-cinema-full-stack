@@ -1,7 +1,7 @@
 <template>
 <div class="image-uploader">
   <div class="label">Choose image</div>
-  <input class="custom-file-input" type="file" accept=".png, .jpg, .jpeg" ref="inputEl" @change="handleFile"/>
+  <input class="custom-file-input" type="file" accept="image/*" ref="inputEl" @change="handleFile"/>
 </div>
 </template>
 

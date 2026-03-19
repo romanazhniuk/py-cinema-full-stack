@@ -61,7 +61,7 @@ export default {
 
     async fetchActors () {
       try {
-        const { data: actors } = await this.axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/actors`, {
+        const { data: actors } = await this.axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/actors/`, {
           headers: { Authorization: `Bearer ${this.token}` }
         });
         this.actors = actors.map(({ id, first_name: firstName, last_name: lastName }) => {
@@ -78,7 +78,7 @@ export default {
 
     async fetchGenres () {
       try {
-        const { data: genres } = await this.axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/genres`, {
+        const { data: genres } = await this.axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/genres/`, {
           headers: { Authorization: `Bearer ${this.token}` }
         });
         this.genres = genres;
@@ -89,6 +89,14 @@ export default {
 
     async addMovie () {
       try {
+        const durationInt = parseInt(this.duration, 10);
+
+        if (!Number.isFinite(durationInt) || durationInt <= 0) {
+          // Show clear feedback if duration is not a positive number in minutes
+          alert('Duration must be a positive number of minutes (e.g. "120").');
+          return;
+        }
+
         const headers = {
           Authorization: `Bearer ${this.token}`
         };
@@ -107,10 +115,10 @@ export default {
         };
 
         const { data: movie } = await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/cinema/movies`,
+          `${import.meta.env.VITE_API_URL}/api/cinema/movies/`,
           {
             title: this.title,
-            duration: Number(this.duration),
+            duration: durationInt,
             description: this.description,
             actors: this.selectedActorIds,
             genres: this.selectedGenreIds
@@ -119,14 +127,27 @@ export default {
         );
 
         if (this.image) {
-          const data = new FormData();
-          data.append('image', this.image);
-          await axios.post(`/api/cinema/movies-${movie.id}-upload-image`, data, imageConfig);
+          try {
+            const data = new FormData();
+            data.append('image', this.image);
+            await axios.post(
+              `${import.meta.env.VITE_API_URL}/api/cinema/movies/${movie.id}/upload-image/`,
+              data,
+              imageConfig
+            );
+          } catch (uploadErr) {
+            const payload = uploadErr?.response?.data;
+            console.error('Movie image upload failed:', payload || uploadErr);
+            alert('Movie was created, but image upload failed. You can try a different image file.\nDetails: ' + JSON.stringify(payload || uploadErr.message));
+          }
         }
 
         location.hash = '#/movies';
       } catch (err) {
-        console.error(err);
+        // Surface backend validation errors instead of failing silently
+        const payload = err?.response?.data;
+        console.error('Add movie failed:', payload || err);
+        alert('Failed to add movie. Details: ' + JSON.stringify(payload || err.message));
       }
     },
 

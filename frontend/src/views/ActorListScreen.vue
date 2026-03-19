@@ -12,8 +12,13 @@
     <div class="actors">
       <div class="header">All Actors</div>
       <div class="container">
-        <div v-for="(actor, index) in actors" :key="actor.id" :class="index % 2 === 0 ? 'odd' : ''">
-          {{actor.first_name}} {{actor.last_name}}
+        <div
+          v-for="(actor, index) in actors"
+          :key="actor.id"
+          :class="index % 2 === 0 ? 'odd row' : 'row'"
+        >
+          <span>{{actor.first_name}} {{actor.last_name}}</span>
+          <button class="delete-btn" @click="deleteActor(actor.id)">✕</button>
         </div>
       </div>
       <add-btn @click="createMode = !createMode"></add-btn>
@@ -49,7 +54,7 @@ export default {
   methods: {
     async fetchActors () {
       try {
-        const { data: actors } = await axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/actors`, {
+        const { data: actors } = await axios.get(`${import.meta.env.VITE_API_URL}/api/cinema/actors/`, {
           headers: { Authorization: `Bearer ${this.token}` }
         });
         this.actors = actors;
@@ -68,7 +73,7 @@ export default {
         };
 
         await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/cinema/actors`,
+          `${import.meta.env.VITE_API_URL}/api/cinema/actors/`,
           {
             first_name: this.firstName,
             last_name: this.lastName
@@ -83,6 +88,22 @@ export default {
         this.lastName = '';
       } catch (err) {
         console.error(err);
+      }
+    },
+
+    async deleteActor (id) {
+      if (!confirm('Delete this actor?')) return;
+      try {
+        await axios.delete(
+          `${import.meta.env.VITE_API_URL}/api/cinema/actors/${id}/`,
+          {
+            headers: { Authorization: `Bearer ${this.token}` }
+          }
+        );
+        this.actors = this.actors.filter((actor) => actor.id !== id);
+      } catch (err) {
+        console.error(err.response?.data || err);
+        alert('Failed to delete actor.');
       }
     },
 
@@ -148,16 +169,29 @@ export default {
   line-height: 30px;
 }
 
-.container > div {
+.container > .row {
   height: 50px;
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  justify-content: space-between;
+  padding: 0 10px 0 16px;
   border-radius: 10px;
 }
 
 .container > .odd {
   background-color: var(--secondary-bg);
+}
+
+.delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--main-font);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+}
+.delete-btn:hover {
+  color: var(--red);
 }
 
 .input-container {
